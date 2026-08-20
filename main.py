@@ -68,6 +68,8 @@ while True:
 
                         validacao_atestado = validacao.get("response") or ""
 
+                        print(f"Resposta do Llama: {validacao_atestado}")
+
                         if validacao_atestado == "Não":
 
                             print("\nO documento não é atestado")

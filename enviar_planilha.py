@@ -1,14 +1,23 @@
 import win32com.client
+from pathlib import Path
+import sys
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+if getattr(sys, "frozen", False):
+    base_dir = Path(sys.executable).parent
+else:
+    base_dir = Path(__file__).resolve().parent
+
+excel_path = base_dir / "teste_atestados.xlsm"
+
+if not excel_path.exists():
+    raise FileNotFoundError(f"Planilha não encontrada: {excel_path}")
 
 def enviar_dados_planilha(nome, email, horas):
     excel = win32com.client.Dispatch("Excel.Application")
     excel.Visible = True
 
-    arquivo = excel.Workbooks.Open(os.getenv("excel_path"))
+    arquivo = excel.Workbooks.Open(str(excel_path))
 
     planilha = arquivo.Worksheets("Envio")
 
