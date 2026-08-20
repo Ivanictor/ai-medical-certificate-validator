@@ -21,3 +21,4 @@ def enviar_dados_planilha(nome, email, horas):
     arquivo.Save()
     arquivo.Close()
     excel.Quit()
+    print("\nDados enviados para a planilha")

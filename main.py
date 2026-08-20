@@ -4,6 +4,7 @@ import os
 import re
 import smtplib
 from datetime import date
+import traceback
 from call_ollama import get_token, call_llama, image_converter
 from enviar_email import send_email
 from paddle_ocr import paddle_ocr
@@ -32,21 +33,21 @@ prompt = (
 
 while True:
     try:
-        print("Conectando ao servidor IMAP...")
+        print("\nConectando ao servidor IMAP...\n")
         with MailBox(imap_server).login(email_local, senha) as mailbox:
 
             while True:
                 respostas = mailbox.idle.wait(timeout=60)
 
                 if not respostas:
-                    print("Nenhuma alteração na caixa de entrada nos últimos 60 segundos")
+                    print("\nNenhuma alteração na caixa de entrada nos últimos 60 segundos")
                     continue
-                print("Foi detectada uma alteração na caixa de entrada")
+                print("\nFoi detectada uma alteração na caixa de entrada")
 
                 mensagens = list(mailbox.fetch(AND(seen=False, subject="Atestado"), mark_seen=False))
 
                 if not mensagens:
-                    print("Nenhum e-mail com o assunto 'Atestado' foi encontrado")
+                    print("\nNenhum e-mail com o assunto 'Atestado' foi encontrado")
                     
                 for msg in mensagens:
 
@@ -63,11 +64,14 @@ while True:
 
                         images = image_converter(payload, att.content_type)
 
-                        validacao = call_llama(bearer_token, images, prompt=prompt)
+                        validacao = call_llama(bearer_token, images["base64"], prompt=prompt)
 
                         validacao_atestado = validacao.get("response") or ""
 
                         if validacao_atestado == "Não":
+
+                            print("\nO documento não é atestado")
+
                             texto = "O documento que você enviou não é um atestado válido"
                             data_envio = date.today().strftime("%d/%m/%Y")
                             try:
@@ -75,17 +79,19 @@ while True:
                                     data_envio=data_envio, 
                                     destinatario=email_remetente,
                                     smtp_server=smtp_server,
-                                    smtp_port=smtp_port)
+                                    smtp_port=smtp_port,
+                                    texto=texto)
                                 
                             except smtplib.SMTPException as e:
                                 print(f"Erro SMTP: {e}")
 
                         elif validacao_atestado == "Sim":
-                            nome_real = re.search(r"Nome:\s*(.*)", texto).group(1)
+                            texto_email = msg.text
+                            nome_real = re.search(r"Nome:\s*(.*)", texto_email).group(1)
                             hora, score = paddle_ocr(payload, nome_real)
 
                             if score < 0.8:
-                                print("Nome não reconhecido, enviado 'aplicação manual' ")
+                                print("\nNome não reconhecido, enviado 'aplicação manual' ")
                                 enviar_dados_planilha(
                                     "Preenchimento manual", email_remetente, "Preenchimento manual"
                                     )
@@ -95,10 +101,11 @@ while True:
                                 enviar_dados_planilha(nome_real, email_remetente, hora)
 
                         else:
-                            print("Llama respondeu no formato errado")
+                            print("\nLlama respondeu no formato errado")
                             enviar_dados_planilha("Preenchimento manual", email_remetente, "Preenchimento manual")
                             
                     if not anexo_valido:
+                        print("\nNão há anexos válidos\n")
                         texto = "Não há anexos válidos ao seu email. Você se esqueceu de anexar o atestado?"
                         data_envio = date.today().strftime("%d/%m/%Y")
                         try:
@@ -106,14 +113,19 @@ while True:
                                 data_envio=data_envio, 
                                 destinatario=email_remetente,
                                 smtp_server=smtp_server,
-                                smtp_port=smtp_port)
+                                smtp_port=smtp_port,
+                                texto=texto)
                             
                         except smtplib.SMTPException as e:
                             print(f"Erro SMTP: {e}")
 
+                    if anexo_valido:
+                        mailbox.flag(msg.uid, "\\Seen",True)
+
     except Exception as e:
-        print(f"Conexão IMAP perdida: {e}")
+        print(f"Erro no processamento: {e}")
         print(f"Tipo do erro: {type(e).__name__}")
+        traceback.print_exc()
         print("Tentando reconectar em 30 segundos..")
         time.sleep(30)
             
