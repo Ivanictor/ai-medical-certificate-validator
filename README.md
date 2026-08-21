@@ -2,7 +2,7 @@
 
 O projeto consiste em um sistema simples, ainda em desenvolvimento, para validar atestados e extrair informações deles (nome e horas solicitadas, por exemplo) de modo a agilizar o processo de validação de atestados realizados pelo setor de RH da SEAD
 
-# Estrutura
+## Estrutura
 
 O projeto foi construído até aqui com a utilização das seguintes tecnologias:
 
