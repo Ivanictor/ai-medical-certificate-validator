@@ -2,6 +2,7 @@ from imap_tools import MailBox, AND
 from dotenv import load_dotenv
 import os
 import re
+import json
 import smtplib
 from datetime import date
 import traceback
@@ -23,6 +24,8 @@ smtp_port = 587
 email_local = os.getenv("email_outlook")
 senha = os.getenv("senha_outlook")
 
+ARQUIVO_PROCESSADOS = "processados.json"
+
 prompt = (
     """Leia o documento a seguir e responda: 
     'Sim', caso o documento seja um atestado;
@@ -30,6 +33,27 @@ prompt = (
     Seu formato de resposta deve incluir apenas 'Sim' ou 'Não', 
     não explique sua decisão"""
     )
+
+
+def carregar_processados():
+    if os.path.exists(ARQUIVO_PROCESSADOS):
+        with open(ARQUIVO_PROCESSADOS, "r") as f:
+            try:
+                return set(json.load(f))
+            except json.JSONDecodeError:
+                return set()
+    return set()
+
+
+def salvar_processado(message_id, processados):
+    if not message_id:
+        return
+    processados.add(message_id)
+    with open(ARQUIVO_PROCESSADOS, "w") as f:
+        json.dump(list(processados), f)
+
+
+processados = carregar_processados()
 
 while True:
     try:
@@ -48,8 +72,18 @@ while True:
 
                 if not mensagens:
                     print("\nNenhum e-mail com o assunto 'Atestado' foi encontrado")
-                    
+
                 for msg in mensagens:
+
+                    message_id = msg.headers.get("message-id", [""])[0]
+
+                    if message_id and message_id in processados:
+                        print(f"\nE-mail {message_id} já processado anteriormente, pulando")
+                        try:
+                            mailbox.flag(msg.uid, "\\Seen", True)
+                        except Exception as e:
+                            print(f"Falha ao marcar e-mail já processado como lido: {e}")
+                        continue
 
                     email_remetente = msg.from_
                     anexo_valido = False
@@ -78,12 +112,12 @@ while True:
                             data_envio = date.today().strftime("%d/%m/%Y")
                             try:
                                 send_email(
-                                    data_envio=data_envio, 
+                                    data_envio=data_envio,
                                     destinatario=email_remetente,
                                     smtp_server=smtp_server,
                                     smtp_port=smtp_port,
                                     texto=texto)
-                                
+
                             except smtplib.SMTPException as e:
                                 print(f"Erro SMTP: {e}")
 
@@ -105,24 +139,28 @@ while True:
                         else:
                             print("\nLlama respondeu no formato errado")
                             enviar_dados_planilha("Preenchimento manual", email_remetente, "Preenchimento manual")
-                            
+
                     if not anexo_valido:
                         print("\nNão há anexos válidos\n")
                         texto = "Não há anexos válidos ao seu email. Você se esqueceu de anexar o atestado?"
                         data_envio = date.today().strftime("%d/%m/%Y")
                         try:
                             send_email(
-                                data_envio=data_envio, 
+                                data_envio=data_envio,
                                 destinatario=email_remetente,
                                 smtp_server=smtp_server,
                                 smtp_port=smtp_port,
                                 texto=texto)
-                            
+
                         except smtplib.SMTPException as e:
                             print(f"Erro SMTP: {e}")
 
                     if anexo_valido:
-                        mailbox.flag(msg.uid, "\\Seen",True)
+                        salvar_processado(message_id, processados)
+                        try:
+                            mailbox.flag(msg.uid, "\\Seen", True)
+                        except Exception as e:
+                            print(f"Falha ao marcar como lido, mas já registrado localmente: {e}")
 
     except Exception as e:
         print(f"Erro no processamento: {e}")
@@ -130,4 +168,3 @@ while True:
         traceback.print_exc()
         print("Tentando reconectar em 30 segundos..")
         time.sleep(30)
-            
