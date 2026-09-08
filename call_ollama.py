@@ -28,10 +28,9 @@ def get_token():
     if _token_cache["token"] and now < _token_cache["expires_at"]:
         return _token_cache["token"]
     
-    url = "https://api.go.gov.br/token"
+    url = " https://ssolab.go.gov.br/oauth2/token"
     headers = {
         "Authorization": f"Basic {os.getenv('BASIC_AUTH')}",
-        "Content-Type": "application/x-www-form-urlencoded"
     }
     data = {
         "grant_type": "client_credentials"
@@ -54,12 +53,12 @@ def get_token():
     else:
         raise Exception(f"Erro ao obter token: {response.status_code} - {response.text}")
 
-def call_llama(bearer_token, images, prompt):
-    """Envia a requisição à API do Llama com o prompt, o token e as imagens"""
+def call_llama(bearer_token, prompt):
+    """Envia a requisição à API do Llama com o prompt r o token"""
 
     print("Usando o Llama...")
     
-    url = "https://api.go.gov.br/ia/modelos-linguagem-natural/v2.0/generate"
+    url = "https://apilab.go.gov.br/llama-3.1-8b-instruct/1.1.0/v1/completions"
     headers = {
         "Authorization": f"Bearer {bearer_token}",
         "Content-Type": "application/json"
@@ -67,16 +66,14 @@ def call_llama(bearer_token, images, prompt):
 
 
     data = {
-        "model": "llama3.2-vision:11b",
-        "prompt": prompt,
-        "options": {
-            "temperature": 0.7,
-            "top_p": 0.9
-        }
+        "model": "llama-31-8b-instruct",
+        "messages": [
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
     }
-
-    if images:
-        data["images"] = [images[0]]
 
     response = requests.post(url=url, headers=headers, json=data)
 
