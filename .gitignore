@@ -6,3 +6,8 @@ build/
 dist/
 main.spec
 processar_atestados.spec
+tests/
+test_llama.py
+Atestado_0809.pdf
+Atestado.pdf
+Texto Llama.txt

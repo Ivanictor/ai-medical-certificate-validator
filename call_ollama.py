@@ -58,7 +58,7 @@ def call_llama(bearer_token, prompt):
 
     print("Usando o Llama...")
     
-    url = "https://apilab.go.gov.br/llama-3.1-8b-instruct/1.1.0/v1/completions"
+    url = "https://apilab.go.gov.br/llama-3.1-8b-instruct/1.1.0/v1/chat/completions"
     headers = {
         "Authorization": f"Bearer {bearer_token}",
         "Content-Type": "application/json"
@@ -102,7 +102,7 @@ def image_converter(payload, content_type):
         images.append(image_base64)
 
     return {
-        "base64": image_base64, 
+        "base64": images, 
         "pil": paginas
         }
 

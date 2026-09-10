@@ -124,7 +124,7 @@ while True:
                         elif validacao_atestado == "Sim":
                             texto_email = msg.text
                             nome_real = re.search(r"Nome:\s*(.*)", texto_email).group(1)
-                            hora, score = paddle_ocr(payload, nome_real)
+                            hora, score = paddle_ocr(payload, nome_real, att.content_type)
 
                             if score < 0.8:
                                 print("\nNome não reconhecido, enviado 'aplicação manual' ")

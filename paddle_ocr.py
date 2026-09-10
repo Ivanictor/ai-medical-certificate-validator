@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import re
 import time
 import numpy as np
+import json
 from TextSimilarity import compare_names
 from call_ollama import call_llama, get_token, image_converter, limitar_imagem, extrair_horas_afastamento
 
@@ -12,15 +13,15 @@ load_dotenv()
 
 bearer_token = get_token()
 
-def paddle_ocr(payload, nome_real):
+def paddle_ocr(payload, nome_real, content_type):
 
     print("Usando o PaddleOCR...")
 
     ocr = PaddleOCR(lang="pt", enable_mkldnn=False)
 
-    img = image_converter(payload)
+    img = image_converter(payload, content_type)
 
-    for pagina in img:
+    for pagina in img["pil"]:
 
         pagina = limitar_imagem(pagina)
 
@@ -111,8 +112,9 @@ def paddle_ocr(payload, nome_real):
         )
     
     
-    resposta = call_llama(bearer_token=bearer_token, images=None, prompt=prompt_1)
-    texto_paddle = resposta.get("response") or ""
+    resposta = call_llama(bearer_token=bearer_token, prompt=prompt_1)
+    resposta_llm = json.loads(resposta["response"])
+    texto_paddle = resposta_llm["choices"][0]["message"]["content"]
 
     match = re.search(r"PACIENTE\s*[:=]\s*(.+)", texto_paddle) #Aceita "PACIENTE=" "PACIENTE: " e "PACIENTE ="
 
@@ -125,7 +127,7 @@ def paddle_ocr(payload, nome_real):
 
     score = compare_names(nome, nome_real)
 
-    return hora, score
+    return hora, score, texto_paddle, nome, resposta
 
 print("Tarefa concluída")
 
