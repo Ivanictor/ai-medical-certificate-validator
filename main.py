@@ -8,7 +8,7 @@ from datetime import date
 import traceback
 from call_ollama import get_token, call_llama, image_converter
 from enviar_email import send_email
-from paddle_ocr import paddle_ocr
+from paddle_ocr import paddle_ocr, verifica_atestado_ocr
 from enviar_planilha import enviar_dados_planilha
 import time
 
@@ -96,11 +96,14 @@ while True:
 
                         payload = att.payload
 
-                        images = image_converter(payload, att.content_type)
+                        texto_atestado = verifica_atestado_ocr(payload, att.content_type)
 
-                        validacao = call_llama(bearer_token, images["base64"], prompt=prompt)
+                        prompt += f"\n Texto do atestado: {texto_atestado}"
 
-                        validacao_atestado = validacao.get("response") or ""
+                        validacao = call_llama(bearer_token, prompt=prompt)
+
+                        validacao_llm = json.loads(validacao["response"])
+                        validacao_atestado = validacao_llm["choices"][0]["message"]["content"]
 
                         print(f"Resposta do Llama: {validacao_atestado}")
 

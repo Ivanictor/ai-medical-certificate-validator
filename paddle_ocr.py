@@ -13,6 +13,29 @@ load_dotenv()
 
 bearer_token = get_token()
 
+def verifica_atestado_ocr(payload, content_type):
+    print("Usando o PaddleOCR")
+
+    ocr = PaddleOCR(lang="pt", enable_mkldnn=False)
+    
+    img = image_converter(payload, content_type)
+
+    for pagina in img["pil"]:
+
+        pagina = limitar_imagem(pagina)
+
+        pagina_np = np.array(pagina)
+
+        resultado = ocr.predict(pagina_np)
+
+        texto_completo = ""
+        for res in resultado:
+            textos = res["rec_texts"]
+            for texto in textos:
+                texto_completo += texto + "\n"
+
+    return texto_completo
+
 def paddle_ocr(payload, nome_real, content_type):
 
     print("Usando o PaddleOCR...")
@@ -79,7 +102,7 @@ def paddle_ocr(payload, nome_real, content_type):
             "- Se houver afastamento em dias, converta para horas considerando 8 horas por dia.\n"
             "- Se o afastamento estiver em horas, mantenha o valor informado.\n"
             "- Se houver mais de um médico, utilize apenas aquele que assina o atestado.\n"
-            "- Se o período de afastamento informado for 'Vespertino' ou 'Matutino', considerar o número de horas como 4.\n"
+            "- Se o período de afastamento informado for 'Vespertino', 'Matutino', 'Manhã' ou 'Tarde', considerar o número de horas como 4.\n"
             "- Se a data de início não estiver explícita, mas o documento indicar que o afastamento inicia na data da emissão, utilize a data de emissão.\n"
             "- Não inclua informações adicionais junto ao CRM.\n"
             "- Informe apenas o número do CRM exatamente como aparece no documento.\n"
