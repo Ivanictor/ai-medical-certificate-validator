@@ -148,7 +148,7 @@ def paddle_ocr(payload, nome_real, content_type):
 
     hora = extrair_horas_afastamento(texto_paddle)
 
-    score = compare_names(nome, nome_real)
+    score = compare_names(nome, nome_real).get("similarity")
 
     return hora, score, texto_paddle, nome, resposta
 

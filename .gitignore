@@ -10,3 +10,6 @@ tests/
 Atestados/
 Texto Llama.txt
 Teste_Llama.txt
+processados.json
+atestados.db
+teste_banco.ipynb

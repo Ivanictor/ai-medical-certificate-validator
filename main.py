@@ -6,10 +6,12 @@ import json
 import smtplib
 from datetime import date
 import traceback
-from call_ollama import get_token, call_llama, image_converter
+from bs4 import BeautifulSoup
+from call_ollama import get_token, call_llama
+from cpf import formatar_cpf
 from enviar_email import send_email
 from paddle_ocr import paddle_ocr, verifica_atestado_ocr
-from enviar_planilha import enviar_dados_planilha
+from enviar_banco import enviar_dados_banco
 import time
 
 load_dotenv()
@@ -28,11 +30,19 @@ ARQUIVO_PROCESSADOS = "processados.json"
 
 prompt = (
     """Leia o documento a seguir e responda: 
-    'Sim', caso o documento seja um atestado;
-    'Não', caso o documento não seja um atestado.
+    'Sim', caso o documento seja um atestado médico, fornecido por um médico, clínico, dentista, nutricionista ou outro profissional da área da saúde;
+    'Não', caso o documento não seja um atestado médico.
     Seu formato de resposta deve incluir apenas 'Sim' ou 'Não', 
     não explique sua decisão"""
     )
+
+prompt = (
+    """Analise o documento a seguir e responda: 
+    'Sim', caso o documento possua informações de médico, clínico, dentista, nutricionista ou outro profissional da área da saúde;
+    'Não', caso o documento não possua nenhuma informação de médico clínico, dentista, nutricionista ou outro profissional da área da saúde.
+    Seu formato de resposta deve incluir apenas 'Sim' ou 'Não', 
+    não explique sua decisão"""
+)
 
 
 def carregar_processados():
@@ -59,6 +69,8 @@ while True:
     try:
         print("\nConectando ao servidor IMAP...\n")
         with MailBox(imap_server).login(email_local, senha) as mailbox:
+
+            print("Conectado!")
 
             while True:
                 respostas = mailbox.idle.wait(timeout=60)
@@ -107,7 +119,7 @@ while True:
 
                         print(f"Resposta do Llama: {validacao_atestado}")
 
-                        if validacao_atestado == "Não":
+                        if validacao_atestado in ("Não", "Não.", "Não!", "não"):
 
                             print("\nO documento não é atestado")
 
@@ -124,24 +136,52 @@ while True:
                             except smtplib.SMTPException as e:
                                 print(f"Erro SMTP: {e}")
 
-                        elif validacao_atestado == "Sim":
-                            texto_email = msg.text
+                        elif validacao_atestado in ("Sim", "Sim.", "sim", "Sim!"):
+                            soup = BeautifulSoup(msg.html, "html.parser")
+                            texto_email = soup.get_text("\n", strip=True)
+  
                             nome_real = re.search(r"Nome:\s*(.*)", texto_email).group(1)
-                            hora, score = paddle_ocr(payload, nome_real, att.content_type)
+                            cpf_real = re.search(r"CPF:\s*(.*)", texto_email).group(1)
+
+                            print(f"Nome real: {nome_real}")
+                            print(f"CPF: {cpf_real}")
+
+                            hora, score, _, _, _ = paddle_ocr(payload, nome_real, att.content_type)
+                            cpf = formatar_cpf(cpf_real)
 
                             if score < 0.8:
                                 print("\nNome não reconhecido, enviado 'aplicação manual' ")
-                                enviar_dados_planilha(
-                                    "Preenchimento manual", email_remetente, "Preenchimento manual"
+
+                                enviar_dados_banco(
+                                    nome_real,
+                                    cpf, 
+                                    email_remetente, 
+                                    "Preenchimento manual", 
+                                    payload,
+                                    att.content_type, 
+                                    status="Nome não reconhecido pelo Llama"
                                     )
 
                             elif score >= 0.8:
                                 print(f"Nome reconhecido: {nome_real}")
-                                enviar_dados_planilha(nome_real, email_remetente, hora)
+                                enviado = enviar_dados_banco(
+                                    nome_real, cpf, email_remetente, hora, payload, att.content_type, status="Processado"
+                                    )
+
+                                if enviado:
+                                    print("Dados ao enviado ao banco com sucesso!")
 
                         else:
-                            print("\nLlama respondeu no formato errado")
-                            enviar_dados_planilha("Preenchimento manual", email_remetente, "Preenchimento manual")
+                            print("\n O Llama ou o usuário responderam no formato errado")
+
+                            enviar_dados_banco(
+                                "Preenchimento manual",
+                                "Preenchimento manual", 
+                                email_remetente, 
+                                "Preenchimento manual", 
+                                payload,
+                                att.content_type, 
+                                status="Não processado")
 
                     if not anexo_valido:
                         print("\nNão há anexos válidos\n")
@@ -160,8 +200,10 @@ while True:
 
                     if anexo_valido:
                         salvar_processado(message_id, processados)
+                        print("Arquivo processado foi salvo em processados.json")
                         try:
                             mailbox.flag(msg.uid, "\\Seen", True)
+                            print("E-mail marcado como lido")
                         except Exception as e:
                             print(f"Falha ao marcar como lido, mas já registrado localmente: {e}")
 
