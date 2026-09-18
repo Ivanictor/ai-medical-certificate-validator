@@ -16,7 +16,7 @@ _token_cache = {
     "expires_at": 0
 }
 
-def get_token():
+def get_token() -> str:
     """
     Verifica se ainda existe um token válido no cache. 
     Se houver, utiliza. Se não houver, cria outro
@@ -53,7 +53,7 @@ def get_token():
     else:
         raise Exception(f"Erro ao obter token: {response.status_code} - {response.text}")
 
-def call_llama(bearer_token, prompt):
+def call_llama(bearer_token: str, prompt: str) -> dict:
     """Envia a requisição à API do Llama com o prompt r o token"""
 
     print("Usando o Llama...")
@@ -82,7 +82,7 @@ def call_llama(bearer_token, prompt):
     else:
         return {"error": response.status_code, "message": response.text}
     
-def image_converter(payload, content_type):
+def image_converter(payload: bytes, content_type: str) -> dict:
     """Converte bytes de PDFs ou Imagem para Base64 e PIL.Image"""
     if content_type == "application/pdf":
         paginas = convert_from_bytes(payload)
@@ -106,7 +106,7 @@ def image_converter(payload, content_type):
         "pil": paginas
         }
 
-def extrair_horas_afastamento(texto):
+def extrair_horas_afastamento(texto: str) -> str:
     # Tenta capturar o número que vem logo antes de "horas"
     match_hora = re.search(
         r"HORAS_AFASTAMENTO\s*[:=]\s*.*?(\d+(?:[.,]\d+)?)\s*horas",
@@ -125,7 +125,8 @@ def extrair_horas_afastamento(texto):
     hora = match_hora.group(1).strip().replace(",", ".") if match_hora else "0"
     return hora
 
-def limitar_imagem(img, max_side=4000):
+def limitar_imagem(img: Image.Image, max_side: int = 4000) -> Image.Image:
+    """Se a imagem tiver um lado maior que 4000, diminui o maior lado para 4000 e reduz as dimensões proporcionalmente"""
     largura, altura = img.size
 
     maior_lado = max(largura, altura)

@@ -8,7 +8,7 @@ load_dotenv()
 remetente = os.getenv("email_outlook")
 senha = os.getenv("senha_outlook")
 
-def send_email(data_envio, destinatario, smtp_server, smtp_port, texto):
+def send_email(data_envio: str, destinatario: str, smtp_server: str, smtp_port: str, texto: str) -> None:
     msg = MIMEText(texto)
     msg["Subject"] = f"Resposta ao email enviado no dia {data_envio}"
     msg["From"] = remetente

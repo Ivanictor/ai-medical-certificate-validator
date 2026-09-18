@@ -13,7 +13,8 @@ load_dotenv()
 
 bearer_token = get_token()
 
-def verifica_atestado_ocr(payload, content_type):
+def verifica_atestado_ocr(payload: bytes, content_type: str) -> str:
+    """Uso do OCR para validar se o documento é um atestado ou não"""
     print("Usando o PaddleOCR")
 
     ocr = PaddleOCR(lang="pt", enable_mkldnn=False)
@@ -36,7 +37,8 @@ def verifica_atestado_ocr(payload, content_type):
 
     return texto_completo
 
-def paddle_ocr(payload, nome_real, content_type):
+def paddle_ocr(payload: bytes, nome_real: str, content_type: str) -> tuple:
+    """OCR do texto completo e envio ao Llama para extração dos dados"""
 
     print("Usando o PaddleOCR...")
 

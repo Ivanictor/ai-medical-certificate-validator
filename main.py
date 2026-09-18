@@ -45,7 +45,8 @@ prompt = (
 )
 
 
-def carregar_processados():
+def carregar_processados() -> set:
+    """Carrega o set de arquivos processados para evitar que sejam reprocessados"""
     if os.path.exists(ARQUIVO_PROCESSADOS):
         with open(ARQUIVO_PROCESSADOS, "r") as f:
             try:
@@ -55,7 +56,8 @@ def carregar_processados():
     return set()
 
 
-def salvar_processado(message_id, processados):
+def salvar_processado(message_id: str, processados: set) -> None:
+    """Salva o arquivo recém processado no set de arquivos processados"""
     if not message_id:
         return
     processados.add(message_id)
@@ -101,6 +103,10 @@ while True:
                     anexo_valido = False
 
                     for att in msg.attachments:
+                        print("\nNome: ", att.filename)
+                        print("\nContent-Type: ", att.content_type)
+                        print("\nTamanho: ", len(att.payload))
+
                         if att.content_type not in ("application/pdf", "image/jpeg", "image/png"):
                             continue
 
@@ -159,7 +165,7 @@ while True:
                                     "Preenchimento manual", 
                                     payload,
                                     att.content_type, 
-                                    status="Nome não reconhecido pelo Llama"
+                                    status="Nome não reconhecido pelo Llama",
                                     )
 
                             elif score >= 0.8:
@@ -197,6 +203,14 @@ while True:
 
                         except smtplib.SMTPException as e:
                             print(f"Erro SMTP: {e}")
+
+                        salvar_processado(message_id, processados)
+
+                        try:
+                            mailbox.flag(msg.uid, "\\Seen", True)
+                            print("E-mail marcado como lido")
+                        except Exception as e:
+                            print(f"Falha ao marcar como lido, mas já registrado localmente: {e}")
 
                     if anexo_valido:
                         salvar_processado(message_id, processados)

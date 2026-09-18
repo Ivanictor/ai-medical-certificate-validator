@@ -1,6 +1,8 @@
 import sqlite3
+from typing import Any
 
-def connect_and_create_table_if_not_exists():
+def connect_and_create_table_if_not_exists() -> sqlite3.Connection:
+    """Cria o banco se ele não existir, só é executado dentro de enviar_dados_banco"""
 
     conexao = sqlite3.connect("atestados.db")
 
@@ -24,7 +26,15 @@ def connect_and_create_table_if_not_exists():
 
     return conexao
 
-def enviar_dados_banco(nome, cpf, email, horas_solicitadas, payload, content_type, status):
+def enviar_dados_banco(
+        nome: str,
+        cpf: str, 
+        email: str, 
+        horas_solicitadas: Any, 
+        payload: bytes, 
+        content_type: str, 
+        status: str) -> bool:
+    
     conexao = connect_and_create_table_if_not_exists()
 
     cursor = conexao.cursor()
@@ -54,13 +64,15 @@ def enviar_dados_banco(nome, cpf, email, horas_solicitadas, payload, content_typ
             status
         ))
 
+        conexao.commit()
+        return True
+
     except Exception as e:
+        conexao.rollback()
         raise Exception(f"Erro ao enviar os dados ao banco: {e}")
 
     finally:
-
-        conexao.commit()
         conexao.close()
-        return True
+        
 
 
