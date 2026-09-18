@@ -36,7 +36,7 @@ prompt = (
     não explique sua decisão"""
     )
 
-prompt = (
+prompt_base = (
     """Analise o documento a seguir e responda: 
     'Sim', caso o documento possua informações de médico, clínico, dentista, nutricionista ou outro profissional da área da saúde;
     'Não', caso o documento não possua nenhuma informação de médico clínico, dentista, nutricionista ou outro profissional da área da saúde.
@@ -107,7 +107,7 @@ while True:
                         print("\nContent-Type: ", att.content_type)
                         print("\nTamanho: ", len(att.payload))
 
-                        if att.content_type not in ("application/pdf", "image/jpeg", "image/png"):
+                        if att.content_type not in ("application/pdf", "image/jpeg", "image/png", "image/jpg"):
                             continue
 
                         anexo_valido = True
@@ -116,7 +116,11 @@ while True:
 
                         texto_atestado = verifica_atestado_ocr(payload, att.content_type)
 
-                        prompt += f"\n Texto do atestado: {texto_atestado}"
+                        prompt = (
+                            f"{prompt_base}\n\n"
+                            f"Texto do atestado:\n"
+                            f"{texto_atestado}"
+                        )
 
                         validacao = call_llama(bearer_token, prompt=prompt)
 
