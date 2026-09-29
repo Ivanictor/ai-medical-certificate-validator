@@ -47,8 +47,8 @@ def enviar_dados_banco(
             INSERT INTO atestados (
                 nome,
                 cpf, 
-                email, 
-                arquivo,
+                email,
+                arquivo, 
                 tipo_arquivo, 
                 horas_solicitadas,
                 status
@@ -57,8 +57,8 @@ def enviar_dados_banco(
         """, (
             nome,
             cpf, 
-            email, 
-            arquivo_blob,
+            email,
+            arquivo_blob, 
             content_type, 
             horas_solicitadas, 
             status

@@ -100,6 +100,8 @@ def loop_de_teste() -> list[int]:
         else:
             lista_horas_enviadas.append(0)
 
+        time.sleep(60)
+
     return lista_horas_enviadas
 
 def verifica_horas(lista_horas_enviadas: list):

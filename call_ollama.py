@@ -87,7 +87,7 @@ def image_converter(payload: bytes, content_type: str) -> dict:
     if content_type == "application/pdf":
         paginas = convert_from_bytes(payload)
 
-    elif content_type in ("image/jpeg", "image/png"):
+    elif content_type in ("image/jpeg", "image/png", "image/jpg"):
         paginas = [Image.open(BytesIO(payload))]
     else:
         return {"base64": [], "pil": []}

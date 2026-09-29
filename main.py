@@ -104,8 +104,6 @@ while True:
 
                     for att in msg.attachments:
                         print("\nNome: ", att.filename)
-                        print("\nContent-Type: ", att.content_type)
-                        print("\nTamanho: ", len(att.payload))
 
                         if att.content_type not in ("application/pdf", "image/jpeg", "image/png", "image/jpg"):
                             continue
@@ -147,11 +145,27 @@ while True:
                                 print(f"Erro SMTP: {e}")
 
                         elif validacao_atestado in ("Sim", "Sim.", "sim", "Sim!"):
-                            soup = BeautifulSoup(msg.html, "html.parser")
-                            texto_email = soup.get_text("\n", strip=True)
-  
-                            nome_real = re.search(r"Nome:\s*(.*)", texto_email).group(1)
-                            cpf_real = re.search(r"CPF:\s*(.*)", texto_email).group(1)
+
+                            if msg.html:
+                                soup = BeautifulSoup(msg.html, "html.parser")
+                                texto_email = soup.get_text("\n", strip=True)
+
+                            elif msg.text:
+                                texto_email = msg.text
+
+                            else:
+                                texto_email = ""
+
+                            match_nome = re.search(r"Nome:\s*(.*)", texto_email, re.IGNORECASE)
+                            match_cpf = re.search(r"CPF:\s*(.*)", texto_email, re.IGNORECASE)
+                            
+                            if not match_nome or not match_cpf:
+                                print("Não foi possível encontrar nome ou CPF no email")
+                                print(f"Texto extraído do e-mail: \n{texto_email}")
+                                continue
+
+                            nome_real = match_nome.group(1)
+                            cpf_real =match_cpf.group(1)
 
                             print(f"Nome real: {nome_real}")
                             print(f"CPF: {cpf_real}")

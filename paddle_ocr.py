@@ -18,6 +18,8 @@ def verifica_atestado_ocr(payload: bytes, content_type: str) -> str:
     print("Usando o PaddleOCR")
 
     ocr = PaddleOCR(lang="pt", enable_mkldnn=False)
+
+    texto_completo = ""
     
     img = image_converter(payload, content_type)
 
@@ -29,7 +31,6 @@ def verifica_atestado_ocr(payload: bytes, content_type: str) -> str:
 
         resultado = ocr.predict(pagina_np)
 
-        texto_completo = ""
         for res in resultado:
             textos = res["rec_texts"]
             for texto in textos:
