@@ -18,7 +18,8 @@ def connect_and_create_table_if_not_exists() -> sqlite3.Connection:
             tipo_arquivo TEXT NOT NULL,
             horas_solicitadas INTEGER,
             status TEXT NOT NULL,
-            data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            analisado INTEGER NOT NULL DEFAULT 0
         )
     """)
 
