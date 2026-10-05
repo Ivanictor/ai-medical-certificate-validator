@@ -21,7 +21,7 @@ def verifica_atestado_ocr(payload: bytes, content_type: str) -> str:
 
     texto_completo = ""
     
-    img = "image_converter"(payload, content_type)
+    img = image_converter(payload, content_type)
 
     for pagina in img["pil"]:
 
