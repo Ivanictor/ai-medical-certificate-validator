@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 from PIL import Image, ImageTk
-from datetime import datetime
+from datetime import datetime, date
 import sqlite3
 import unicodedata
 import io
@@ -9,7 +9,7 @@ import pymupdf
 
 
 # ==================================================================
-# FUNÇÕES AUXILIARES (usadas nos filtros)
+# FUNÇÕES AUXILIARES 
 # ==================================================================
 
 def normalizar(texto):
@@ -49,6 +49,22 @@ def data_br_para_iso(texto):
     return datetime.strptime(texto, "%d/%m/%Y").strftime("%Y-%m-%d")
 
 
+def data_iso_para_br(texto):
+    """'2026-12-25' -> '25/12/2026'.
+
+    Valores vazios viram ''. Se o valor não estiver no formato ISO
+    (dado antigo ou digitado à mão), ele é devolvido como está."""
+
+    if not texto:
+        return ""
+
+    try:
+        return datetime.strptime(str(texto), "%Y-%m-%d").strftime("%d/%m/%Y")
+
+    except ValueError:
+        return str(texto)
+
+
 class Aplicacao:
 
     STATUS_SUGERIDOS = [
@@ -64,11 +80,20 @@ class Aplicacao:
     # Tempo (ms) de espera após a digitação antes de aplicar o filtro
     ATRASO_FILTRO_MS = 250
 
+    # Colunas de texto adicionadas ao esquema do banco (usadas na migração)
+    COLUNAS_NOVAS = (
+        "medico",
+        "crm",
+        "cid",
+        "data_inicio",
+        "data_emissao",
+    )
+
     def __init__(self, root):
 
         self.root = root
         self.root.title("Gerenciador de Atestados")
-        self.root.geometry("1150x580")
+        self.root.geometry("1300x620")
 
         # Conexão com o banco (timeout evita "database is locked"
         # se o monitor de e-mail estiver gravando ao mesmo tempo)
@@ -123,14 +148,22 @@ class Aplicacao:
         # TABELA
         # ==========================================================
 
+        frame_tabela = ttk.Frame(root)
+        frame_tabela.pack(fill="both", expand=True, padx=10, pady=10)
+
         self.tabela = ttk.Treeview(
-            root,
+            frame_tabela,
             columns=(
                 "id",
                 "nome",
                 "cpf",
                 "email",
                 "horas",
+                "medico",
+                "crm",
+                "cid",
+                "data_inicio",
+                "data_emissao",
                 "status",
                 "analisado",
                 "data"
@@ -143,31 +176,70 @@ class Aplicacao:
         self.tabela.heading("cpf", text="CPF")
         self.tabela.heading("email", text="Email")
         self.tabela.heading("horas", text="Horas solicitadas")
+        self.tabela.heading("medico", text="Médico")
+        self.tabela.heading("crm", text="CRM")
+        self.tabela.heading("cid", text="CID")
+        self.tabela.heading("data_inicio", text="Início do afastamento")
+        self.tabela.heading("data_emissao", text="Data de emissão")
         self.tabela.heading("status", text="Status")
         self.tabela.heading("analisado", text="Analisado")
         self.tabela.heading("data", text="Data de cadastro")
 
-        # Larguras
-        self.tabela.column("id", width=50)
-        self.tabela.column("nome", width=200)
-        self.tabela.column("cpf", width=110)
-        self.tabela.column("email", width=200)
-        self.tabela.column("horas", width=120)
-        self.tabela.column("status", width=120)
-        self.tabela.column("analisado", width=80, anchor="center")
-        self.tabela.column("data", width=150)
+        # Larguras: (largura, âncora, estica?)
+        # minwidth = largura, para a barra de rolagem horizontal aparecer
+        # quando a janela ficar menor que a soma das colunas.
+        larguras = {
+            "id": (50, "w", False),
+            "nome": (180, "w", True),
+            "cpf": (105, "w", False),
+            "email": (180, "w", True),
+            "horas": (115, "w", False),
+            "medico": (170, "w", True),
+            "crm": (80, "w", False),
+            "cid": (70, "w", False),
+            "data_inicio": (130, "w", False),
+            "data_emissao": (110, "w", False),
+            "status": (200, "w", False),
+            "analisado": (75, "center", False),
+            "data": (140, "w", False),
+        }
+
+        for coluna, (largura, ancora, estica) in larguras.items():
+            self.tabela.column(
+                coluna,
+                width=largura,
+                minwidth=largura,
+                anchor=ancora,
+                stretch=estica
+            )
 
         self.tabela.tag_configure(
             "analisado",
             foreground="#9a9a9a"
         )
 
-        self.tabela.pack(
-            fill="both",
-            expand=True,
-            padx=10,
-            pady=10
+        scroll_y = ttk.Scrollbar(
+            frame_tabela,
+            orient="vertical",
+            command=self.tabela.yview
         )
+        scroll_x = ttk.Scrollbar(
+            frame_tabela,
+            orient="horizontal",
+            command=self.tabela.xview
+        )
+
+        self.tabela.configure(
+            yscrollcommand=scroll_y.set,
+            xscrollcommand=scroll_x.set
+        )
+
+        self.tabela.grid(row=0, column=0, sticky="nsew")
+        scroll_y.grid(row=0, column=1, sticky="ns")
+        scroll_x.grid(row=1, column=0, sticky="ew")
+
+        frame_tabela.rowconfigure(0, weight=1)
+        frame_tabela.columnconfigure(0, weight=1)
 
         # Duplo clique para visualizar/editar
         self.tabela.bind(
@@ -192,8 +264,12 @@ class Aplicacao:
     # ==============================================================
 
     def criar_banco(self):
-        """Mesmo esquema criado pelo enviar_banco.py, mais a coluna
-        "analisado" (0 = não analisado, 1 = analisado)."""
+        """Mesmo esquema criado pelo enviar_dados_banco, incluindo
+        médico, CRM, CID, datas de início e emissão e a coluna
+        "analisado" (0 = não analisado, 1 = analisado).
+
+        As datas de início e emissão são gravadas em formato ISO
+        (AAAA-MM-DD); a interface as exibe como DD/MM/AAAA."""
 
         cursor = self.conexao.cursor()
 
@@ -206,16 +282,22 @@ class Aplicacao:
                 arquivo BLOB NOT NULL,
                 tipo_arquivo TEXT NOT NULL,
                 horas_solicitadas INTEGER,
+                medico TEXT NOT NULL,
+                crm TEXT NOT NULL,
+                cid TEXT NOT NULL,
+                data_inicio TEXT,
+                data_emissao TEXT,
                 status TEXT NOT NULL,
-                analisado INTEGER NOT NULL DEFAULT 0,
-                data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                data_cadastro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                analisado INTEGER NOT NULL DEFAULT 0
             )
         """)
 
-        # Migração: bancos criados antes desta versão não têm a coluna
-        # "analisado". O CREATE TABLE IF NOT EXISTS não altera tabelas
-        # existentes, então a coluna é adicionada aqui, uma única vez.
-        # Os registros antigos ficam como "não analisado" (DEFAULT 0).
+        # Migração: bancos criados antes desta versão não têm algumas
+        # colunas. O CREATE TABLE IF NOT EXISTS não altera tabelas
+        # existentes, então as colunas que faltam são adicionadas aqui.
+        # Os registros antigos ficam com texto vazio nos campos novos
+        # (DEFAULT '') e como "não analisado" (DEFAULT 0).
         colunas = [
             linha[1]
             for linha in cursor.execute("PRAGMA table_info(atestados)")
@@ -226,6 +308,13 @@ class Aplicacao:
                 ALTER TABLE atestados
                 ADD COLUMN analisado INTEGER NOT NULL DEFAULT 0
             """)
+
+        for coluna in self.COLUNAS_NOVAS:
+            if coluna not in colunas:
+                cursor.execute(f"""
+                    ALTER TABLE atestados
+                    ADD COLUMN {coluna} TEXT NOT NULL DEFAULT ''
+                """)
 
         self.conexao.commit()
 
@@ -498,8 +587,13 @@ class Aplicacao:
                 cpf,
                 email,
                 horas_solicitadas,
+                medico,
+                crm,
+                cid,
+                data_inicio,
+                data_emissao,
                 status,
-                CASE WHEN analisado = 1 THEN 'Sim' ELSE 'Não' END,
+                analisado,
                 data_cadastro
             FROM atestados
         """
@@ -515,15 +609,44 @@ class Aplicacao:
 
         registros = cursor.fetchall()
 
-        for registro in registros:
+        for (
+            id_atestado,
+            nome,
+            cpf,
+            email,
+            horas,
+            medico,
+            crm,
+            cid,
+            data_inicio,
+            data_emissao,
+            status,
+            analisado,
+            data_cadastro,
+        ) in registros:
 
-            # registro[6] é a coluna "Analisado" ("Sim" ou "Não")
-            tags = ("analisado",) if registro[6] == "Sim" else ()
+            valores = (
+                id_atestado,
+                nome,
+                cpf,
+                email,
+                "" if horas is None else horas,
+                medico,
+                crm,
+                cid,
+                data_iso_para_br(data_inicio),
+                data_iso_para_br(data_emissao),
+                status,
+                "Sim" if analisado == 1 else "Não",
+                data_cadastro,
+            )
+
+            tags = ("analisado",) if analisado == 1 else ()
 
             self.tabela.insert(
                 "",
                 "end",
-                values=registro,
+                values=valores,
                 tags=tags
             )
 
@@ -599,6 +722,11 @@ class Aplicacao:
         cpf = "00000000000"
         email = "teste@email.com"
         horas_solicitadas = None
+        medico = "Médico de teste"
+        crm = "00000"
+        cid = "Z00"
+        data_inicio = date.today().isoformat()
+        data_emissao = date.today().isoformat()
         status = "Pendente"
 
         # ==========================================================
@@ -616,9 +744,14 @@ class Aplicacao:
                         arquivo,
                         tipo_arquivo,
                         horas_solicitadas,
+                        medico,
+                        crm,
+                        cid,
+                        data_inicio,
+                        data_emissao,
                         status
                     )
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     nome,
                     cpf,
@@ -626,6 +759,11 @@ class Aplicacao:
                     sqlite3.Binary(dados),
                     tipo_arquivo,
                     horas_solicitadas,
+                    medico,
+                    crm,
+                    cid,
+                    data_inicio,
+                    data_emissao,
                     status
                 ))
 
@@ -701,7 +839,7 @@ class Aplicacao:
         )[0]
 
         # Os valores são lidos do banco (e não da tabela) para evitar
-        # que o Tk converta o CPF em número e perca zeros à esquerda.
+        # que o Tk converta CPF/CRM em número e perca zeros à esquerda.
         cursor = self.conexao.cursor()
 
         cursor.execute("""
@@ -709,6 +847,11 @@ class Aplicacao:
                 nome,
                 cpf,
                 horas_solicitadas,
+                medico,
+                crm,
+                cid,
+                data_inicio,
+                data_emissao,
                 status,
                 analisado,
                 arquivo,
@@ -728,7 +871,20 @@ class Aplicacao:
             )
             return
 
-        nome, cpf, horas, status, analisado, dados, tipo_arquivo = resultado
+        (
+            nome,
+            cpf,
+            horas,
+            medico,
+            crm,
+            cid,
+            data_inicio,
+            data_emissao,
+            status,
+            analisado,
+            dados,
+            tipo_arquivo,
+        ) = resultado
 
         self.mostrar_atestado(
             id_atestado,
@@ -736,6 +892,11 @@ class Aplicacao:
                 "nome": nome,
                 "cpf": cpf,
                 "horas_solicitadas": horas,
+                "medico": medico,
+                "crm": crm,
+                "cid": cid,
+                "data_inicio": data_iso_para_br(data_inicio),
+                "data_emissao": data_iso_para_br(data_emissao),
                 "status": status,
                 "analisado": analisado,
             },
@@ -847,6 +1008,15 @@ class Aplicacao:
             "horas_solicitadas": tk.StringVar(
                 value=texto(valores["horas_solicitadas"])
             ),
+            "medico": tk.StringVar(value=texto(valores["medico"])),
+            "crm": tk.StringVar(value=texto(valores["crm"])),
+            "cid": tk.StringVar(value=texto(valores["cid"])),
+            "data_inicio": tk.StringVar(
+                value=texto(valores["data_inicio"])
+            ),
+            "data_emissao": tk.StringVar(
+                value=texto(valores["data_emissao"])
+            ),
             "status": tk.StringVar(value=texto(valores["status"])),
             "analisado": tk.IntVar(value=1 if valores["analisado"] else 0),
         }
@@ -855,6 +1025,11 @@ class Aplicacao:
             ("nome", "Nome"),
             ("cpf", "CPF"),
             ("horas_solicitadas", "Horas solicitadas"),
+            ("medico", "Médico"),
+            ("crm", "CRM"),
+            ("cid", "CID"),
+            ("data_inicio", "Início do afastamento\n(DD/MM/AAAA)"),
+            ("data_emissao", "Data de emissão\n(DD/MM/AAAA)"),
             ("status", "Status"),
         ]
 
@@ -935,6 +1110,11 @@ class Aplicacao:
         nome = variaveis["nome"].get().strip()
         cpf = variaveis["cpf"].get().strip()
         horas_texto = variaveis["horas_solicitadas"].get().strip()
+        medico = variaveis["medico"].get().strip()
+        crm = variaveis["crm"].get().strip()
+        cid = variaveis["cid"].get().strip()
+        data_inicio_texto = variaveis["data_inicio"].get().strip()
+        data_emissao_texto = variaveis["data_emissao"].get().strip()
         status = variaveis["status"].get().strip()
         analisado = 1 if variaveis["analisado"].get() else 0
 
@@ -964,6 +1144,33 @@ class Aplicacao:
                 )
                 return
 
+        # Datas: vazio -> '' (registros antigos não têm esses dados),
+        # senão precisam estar em DD/MM/AAAA e são gravadas em ISO.
+        datas_iso = {}
+
+        for rotulo, texto_data in (
+            ("Início do afastamento", data_inicio_texto),
+            ("Data de emissão", data_emissao_texto),
+        ):
+            if texto_data == "":
+                datas_iso[rotulo] = ""
+                continue
+
+            try:
+                datas_iso[rotulo] = data_br_para_iso(texto_data)
+
+            except ValueError:
+                messagebox.showwarning(
+                    "Data inválida",
+                    f"{rotulo}: use o formato DD/MM/AAAA "
+                    "ou deixe o campo vazio.",
+                    parent=janela
+                )
+                return
+
+        data_inicio = datas_iso["Início do afastamento"]
+        data_emissao = datas_iso["Data de emissão"]
+
         try:
             with self.conexao:  # commit automático / rollback em erro
                 self.conexao.execute("""
@@ -971,6 +1178,11 @@ class Aplicacao:
                     SET nome = ?,
                         cpf = ?,
                         horas_solicitadas = ?,
+                        medico = ?,
+                        crm = ?,
+                        cid = ?,
+                        data_inicio = ?,
+                        data_emissao = ?,
                         status = ?,
                         analisado = ?
                     WHERE id = ?
@@ -978,6 +1190,11 @@ class Aplicacao:
                     nome,
                     cpf,
                     horas,
+                    medico,
+                    crm,
+                    cid,
+                    data_inicio,
+                    data_emissao,
                     status,
                     analisado,
                     id_atestado

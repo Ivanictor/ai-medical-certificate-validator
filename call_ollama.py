@@ -54,7 +54,7 @@ def get_token() -> str:
         raise Exception(f"Erro ao obter token: {response.status_code} - {response.text}")
 
 def call_llama(bearer_token: str, prompt: str) -> dict:
-    """Envia a requisição à API do Llama com o prompt r o token"""
+    """Envia a requisição à API do Llama com o prompt e o token"""
 
     print("Usando o Llama...")
     
@@ -124,6 +124,33 @@ def extrair_horas_afastamento(texto: str) -> str:
 
     hora = match_hora.group(1).strip().replace(",", ".") if match_hora else "0"
     return hora
+
+import re
+
+def extrair_medico(texto: str) -> str:
+    match = re.search(r"MEDICO\s*=\s*(.*)", texto, re.IGNORECASE)
+
+    return match.group(1).strip() if match else "NÃO IDENTIFICADO"
+
+def extrair_cid(texto: str) -> str:
+    match = re.search(r"MEDICO\s*=\s*(.*)", texto, re.IGNORECASE)
+
+    return match.group(1).strip() if match else "NÃO IDENTIFICADO"
+
+def extrair_data_emissao(texto: str) -> str:
+    match = re.search(r"DATA_EMISSAO\s*=\s*(.*)", texto, re.IGNORECASE)
+
+    return match.group(1).strip() if match else "NÃO IDENTIFICADO"
+
+def extrair_data_inicio(texto: str) -> str:
+    match = re.search(r"DATA_INICIO\s*=\s*(.*)", texto, re.IGNORECASE)
+
+    return match.group(1).strip() if match else "NÃO IDENTIFICADO"
+
+def extrair_crm(texto: str) -> str:
+    match = re.search(r"CRM\s*=\s*(.*)", texto, re.IGNORECASE)
+
+    return match.group(1).strip() if match else "NÃO IDENTIFICADO"
 
 def limitar_imagem(img: Image.Image, max_side: int = 4000) -> Image.Image:
     """Se a imagem tiver um lado maior que 4000, diminui o maior lado para 4000 e reduz as dimensões proporcionalmente"""

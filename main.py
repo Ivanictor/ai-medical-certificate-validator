@@ -165,12 +165,12 @@ while True:
                                 continue
 
                             nome_real = match_nome.group(1)
-                            cpf_real =match_cpf.group(1)
+                            cpf_real = match_cpf.group(1)
 
                             print(f"Nome real: {nome_real}")
                             print(f"CPF: {cpf_real}")
 
-                            hora, score, _, _, _ = paddle_ocr(payload, nome_real, att.content_type)
+                            hora, score, crm, cid, medico, data_inicio, data_emissao, _, _, _ = paddle_ocr(payload, nome_real, att.content_type)
                             cpf = formatar_cpf(cpf_real)
 
                             if score < 0.8:
@@ -180,7 +180,12 @@ while True:
                                     nome_real,
                                     cpf, 
                                     email_remetente, 
-                                    "Preenchimento manual", 
+                                    "Preenchimento manual",
+                                    medico,
+                                    crm,
+                                    cid,
+                                    data_inicio,
+                                    data_emissao, 
                                     payload,
                                     att.content_type, 
                                     status="Nome não reconhecido pelo Llama",
@@ -189,7 +194,18 @@ while True:
                             elif score >= 0.8:
                                 print(f"Nome reconhecido: {nome_real}")
                                 enviado = enviar_dados_banco(
-                                    nome_real, cpf, email_remetente, hora, payload, att.content_type, status="Processado"
+                                    nome_real, 
+                                    cpf, 
+                                    email_remetente, 
+                                    hora, 
+                                    medico, 
+                                    crm, 
+                                    cid, 
+                                    data_inicio, 
+                                    data_emissao, 
+                                    payload, 
+                                    att.content_type, 
+                                    status="Processado"
                                     )
 
                                 if enviado:
@@ -202,6 +218,11 @@ while True:
                                 "Preenchimento manual",
                                 "Preenchimento manual", 
                                 email_remetente, 
+                                "Preenchimento manual",
+                                "Preenchimento manual",
+                                "Preenchimento manual",
+                                "Preenchimento manual",
+                                "Preenchimento manual",
                                 "Preenchimento manual", 
                                 payload,
                                 att.content_type, 

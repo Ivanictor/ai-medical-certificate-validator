@@ -5,7 +5,18 @@ import time
 import numpy as np
 import json
 from TextSimilarity import compare_names
-from call_ollama import call_llama, get_token, image_converter, limitar_imagem, extrair_horas_afastamento
+from call_ollama import (
+    call_llama, 
+    get_token, 
+    image_converter, 
+    limitar_imagem, 
+    extrair_horas_afastamento, 
+    extrair_cid, 
+    extrair_medico, 
+    extrair_crm, 
+    extrair_data_emissao, 
+    extrair_data_inicio
+    )
 
 inicio = time.perf_counter()
 
@@ -107,6 +118,7 @@ def paddle_ocr(payload: bytes, nome_real: str, content_type: str) -> tuple:
             "- Se houver mais de um médico, utilize apenas aquele que assina o atestado.\n"
             "- Se o período de afastamento informado for 'Vespertino', 'Matutino', 'Manhã' ou 'Tarde', considerar o número de horas como 4.\n"
             "- Se a data de início não estiver explícita, mas o documento indicar que o afastamento inicia na data da emissão, utilize a data de emissão.\n"
+            "- Informe as datas de início e de emissão no formato DD/MM/YYYY. \n"
             "- Não inclua informações adicionais junto ao CRM.\n"
             "- Informe apenas o número do CRM exatamente como aparece no documento.\n"
             "- Não inclua RQE, especialidade ou outros registros profissionais no campo CRM.\n\n"
@@ -151,9 +163,19 @@ def paddle_ocr(payload: bytes, nome_real: str, content_type: str) -> tuple:
 
     hora = extrair_horas_afastamento(texto_paddle)
 
+    medico = extrair_medico(texto_paddle)
+
+    crm = extrair_crm(texto_paddle)
+
+    cid = extrair_cid(texto_paddle)
+
+    data_inicio = extrair_data_inicio(texto_paddle)
+
+    data_emissao = extrair_data_emissao(texto_paddle)
+
     score = compare_names(nome, nome_real).get("similarity")
 
-    return hora, score, texto_paddle, nome, resposta
+    return hora, score, crm, cid, medico, data_inicio, data_emissao, texto_paddle, nome, resposta
 
 print("Tarefa concluída")
 
