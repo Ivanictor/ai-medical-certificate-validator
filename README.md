@@ -12,7 +12,7 @@ O projeto foi construído até aqui com a utilização das seguintes tecnologias
 `SMTP`: Conexão e envio de emails de resposta <br>
 `IMAP`: Conexão e leitura de emails <br>
 `RapidFuzz`: Biblioteca Python para realizar correspondência entre o nome no atestado e o nome informado no corpo do email usando Fuzzy Matching<br>
-`SQLite`: Banco de dados
+`SQLite`: Banco de dados <br>
 `Tkinter`: Biblioteca Python utilizada para criar aplicações desktop <br>
 
 
