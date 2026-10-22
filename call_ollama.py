@@ -152,8 +152,8 @@ def extrair_crm(texto: str) -> str:
 
     return match.group(1).strip() if match else "NÃO IDENTIFICADO"
 
-def limitar_imagem(img: Image.Image, max_side: int = 4000) -> Image.Image:
-    """Se a imagem tiver um lado maior que 4000, diminui o maior lado para 4000 e reduz as dimensões proporcionalmente"""
+def limitar_imagem(img: Image.Image, max_side: int = 2000) -> Image.Image:
+    """Se a imagem tiver um lado maior que 2000, diminui o maior lado para 2000 e reduz as dimensões proporcionalmente"""
     largura, altura = img.size
 
     maior_lado = max(largura, altura)
@@ -165,4 +165,4 @@ def limitar_imagem(img: Image.Image, max_side: int = 4000) -> Image.Image:
 
     novo_tamanho = (int(largura*escala), int(altura*escala))
 
-    return img.resize(novo_tamanho)
+    return img.resize(novo_tamanho, Image.Resampling.LANCZOS)

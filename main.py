@@ -144,6 +144,21 @@ while True:
                             except smtplib.SMTPException as e:
                                 print(f"Erro SMTP: {e}")
 
+                            enviar_dados_banco(
+                                "",
+                                "", 
+                                email_remetente, 
+                                "",
+                                "",
+                                "",
+                                "",
+                                "",
+                                "", 
+                                payload,
+                                att.content_type, 
+                                status="Documento não reconhecido como atestado",
+                                )
+
                         elif validacao_atestado in ("Sim", "Sim.", "sim", "Sim!"):
 
                             if msg.html:

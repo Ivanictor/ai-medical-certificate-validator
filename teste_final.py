@@ -57,7 +57,8 @@ def enviar_email(caminho_anexo: Path, filename: str, subtype: str, maintype: str
 
 def loop_de_teste() -> list[int]:
 
-    path = Path(os.getenv("ATESTADOS_URL"))
+    #path = Path(os.getenv("ATESTADOS_URL"))
+    path = Path(os.getenv("ATESTADOS_DIGITAIS_URL"))
     lista_horas_enviadas = []
 
     for arquivo in path.iterdir():
@@ -106,7 +107,9 @@ def loop_de_teste() -> list[int]:
 
 def verifica_horas(lista_horas_enviadas: list):
     lista_horas = []
-    horas_rotulo = [8, 1, 8, 8, 4, 4, 8, 8, 24, 8, 16, 4, 4, 8, 4, 4, 24, 8, 16, 4, 8, 4, 4, 4, 8, 4, 8, 3, 4, 4, 8, 8, 4, 8, 4, 8, 8, 8, 8, 8, 8, 8, 8]
+    #horas_rotulo = [8, 1, 8, 8, 4, 4, 8, 8, 24, 8, 16, 4, 4, 8, 4, 4, 24, 8, 16, 4, 8, 4, 4, 4, 8, 4, 8, 3, 4, 4, 8, 8, 4, 8, 4, 8, 8, 8, 8, 8, 8, 8, 8]
+    horas_rotulo = [8, 3, 2, 8, 8, 8, 4, 4, 4, 16, 24, 8, 8, 16, 4, 8, 4, 4, 4, 4, 8, 8, 8, 8, 8, 5, 4, 4, 4, 8, 4, 4, 8, 8, 4, 8, 8, 4, 4, 4, 8, 4, 4, 16, 4, 8, 8, 8, 4, 8] #Atestados digitais
+
     acertos = 0
 
     for i, item in enumerate(lista_horas_enviadas):

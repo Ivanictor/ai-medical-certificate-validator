@@ -5,7 +5,7 @@ from datetime import datetime
 def connect_and_create_table_if_not_exists() -> sqlite3.Connection:
     """Cria o banco se ele não existir, só é executado dentro de enviar_dados_banco"""
 
-    conexao = sqlite3.connect("atestados.db")
+    conexao = sqlite3.connect("atestados_digital.db")
 
     cursor = conexao.cursor()
 

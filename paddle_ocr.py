@@ -58,7 +58,9 @@ def paddle_ocr(payload: bytes, nome_real: str, content_type: str) -> tuple:
 
     img = image_converter(payload, content_type)
 
-    for pagina in img["pil"]:
+    texto_completo = ""
+
+    for i, pagina in enumerate(img["pil"]):
 
         pagina = limitar_imagem(pagina)
 
@@ -66,7 +68,6 @@ def paddle_ocr(payload: bytes, nome_real: str, content_type: str) -> tuple:
 
         resultado = ocr.predict(pagina_np)
 
-        texto_completo = ""
         for res in resultado:
             textos = res["rec_texts"]
             for texto in textos:
