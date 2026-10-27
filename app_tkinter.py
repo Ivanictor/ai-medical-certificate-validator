@@ -97,7 +97,7 @@ class Aplicacao:
 
         # Conexão com o banco (timeout evita "database is locked"
         # se o monitor de e-mail estiver gravando ao mesmo tempo)
-        self.conexao = sqlite3.connect("atestados.db", timeout=30)
+        self.conexao = sqlite3.connect("Bancos/atestados_digital.db", timeout=30)
 
         # Funções usadas pelos filtros dentro das consultas SQL
         self.conexao.create_function("normalizar", 1, normalizar)

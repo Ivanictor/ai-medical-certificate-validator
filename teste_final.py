@@ -57,8 +57,8 @@ def enviar_email(caminho_anexo: Path, filename: str, subtype: str, maintype: str
 
 def loop_de_teste() -> list[int]:
 
-    #path = Path(os.getenv("ATESTADOS_URL"))
     path = Path(os.getenv("ATESTADOS_DIGITAIS_URL"))
+    #path = Path(os.getenv("ATESTADOS_DIGITAIS_URL"))
     lista_horas_enviadas = []
 
     for arquivo in path.iterdir():
@@ -101,7 +101,7 @@ def loop_de_teste() -> list[int]:
         else:
             lista_horas_enviadas.append(0)
 
-        time.sleep(60)
+        time.sleep(40)
 
     return lista_horas_enviadas
 

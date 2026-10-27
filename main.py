@@ -112,7 +112,7 @@ while True:
 
                         payload = att.payload
 
-                        texto_atestado = verifica_atestado_ocr(payload, att.content_type)
+                        texto_atestado, linhas = verifica_atestado_ocr(payload, att.content_type)
 
                         prompt = (
                             f"{prompt_base}\n\n"
@@ -185,11 +185,31 @@ while True:
                             print(f"Nome real: {nome_real}")
                             print(f"CPF: {cpf_real}")
 
-                            hora, score, crm, cid, medico, data_inicio, data_emissao, _, _, _ = paddle_ocr(payload, nome_real, att.content_type)
+                            hora, score, crm, cid, medico, data_inicio, data_emissao, _, _, _, ocr_info = paddle_ocr(nome_real, texto_atestado, linhas)
                             cpf = formatar_cpf(cpf_real)
 
-                            if score < 0.8:
-                                print("\nNome não reconhecido, enviado 'aplicação manual' ")
+                            if ocr_info["decisao"] in ("BAIXA_QUALIDADE", "CAMPO_INCERTO", "REJEITADO"):
+                                print(f"Score OCR: {ocr_info["score_pond"]}\n")
+                                print("Avaliação do OCR: Baixa Qualidade!")
+                                enviar_dados_banco(
+                                    nome=nome_real,
+                                    cpf=cpf, 
+                                    email=email_remetente, 
+                                    horas_solicitadas="Preenchimento manual",
+                                    medico="",
+                                    crm="",
+                                    cid="",
+                                    data_inicio="",
+                                    data_emissao="", 
+                                    payload=payload,
+                                    content_type=att.content_type, 
+                                    status="OCR de baixa qualidade: manuscrito ou scan ruim",
+                                    )
+
+
+                            elif score < 0.8:
+                                print("\nNome não reconhecido, enviado 'aplicação manual' \n")
+                                print(f"Score OCR: {ocr_info["score_pond"]}\n")
 
                                 enviar_dados_banco(
                                     nome_real,
@@ -208,6 +228,7 @@ while True:
 
                             elif score >= 0.8:
                                 print(f"Nome reconhecido: {nome_real}")
+                                print(f"Score OCR: {ocr_info["score_pond"]}")
                                 enviado = enviar_dados_banco(
                                     nome_real, 
                                     cpf, 
